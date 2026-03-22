@@ -138,6 +138,19 @@ This repository is listed on the [Cursor Plugin Directory](https://cursor.direct
 
 The `.plugin/plugin.json` manifest follows the [Open Plugins](https://open-plugins.com) standard, so the repo also works with any conformant agent tool (Codex, GitHub Copilot, etc.).
 
+### Using Individual Skills
+
+To use a single skill without installing the full plugin, copy its `SKILL.md` directly into your project's `.claude/skills/` directory:
+
+```bash
+# Example: add just the context-fundamentals skill
+mkdir -p .claude/skills
+curl -o .claude/skills/context-fundamentals.md \
+  https://raw.githubusercontent.com/muratcankoylan/Agent-Skills-for-Context-Engineering/main/skills/context-fundamentals/SKILL.md
+```
+
+Available skills: `context-fundamentals`, `context-degradation`, `context-compression`, `context-optimization`, `multi-agent-patterns`, `memory-systems`, `tool-design`, `filesystem-context`, `hosted-agents`, `evaluation`, `advanced-evaluation`, `project-development`, `bdi-mental-states`
+
 ### For Custom Implementations
 
 Extract the principles and patterns from any skill and implement them in your agent framework. The skills are deliberately platform-agnostic.

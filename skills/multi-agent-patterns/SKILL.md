@@ -179,14 +179,16 @@ Mitigate by validating agent outputs before passing to consumers. Implement retr
 
 ## Examples
 
-**Example 1: Research Team Architecture**
+**Example 1: Minimal Two-Agent Split (preferred starting point)**
+
+Split only when the two subtasks are genuinely independent and have separate tool requirements:
+
 ```text
-Supervisor
-├── Researcher (web search, document retrieval)
-├── Analyzer (data analysis, statistics)
-├── Fact-checker (verification, validation)
-└── Writer (report generation, formatting)
+Orchestrator (planning, synthesis, user comms)
+└── Specialist (domain-specific retrieval + analysis tools only)
 ```
+
+*Why two agents:* specialist needs a different tool set; their context would bloat the orchestrator. Estimated overhead: ~3–4× token cost versus single-agent. Justified when isolation saves more tokens than coordination costs.
 
 **Example 2: Handoff Protocol**
 ```python
@@ -200,6 +202,12 @@ def handle_customer_request(request):
     else:
         return handle_general(request)
 ```
+
+*Note:* This 3-domain handoff is justified because each domain has distinct tools and context. Adding a 4th or 5th domain to the same router starts approaching the cap of 3–5 workers per supervisor (Gotcha #1 below).
+
+**Example 3: Research Team Architecture (high-overhead pattern — use with care)**
+
+For detailed guidance on the 4-agent research team pattern and when its overhead is justified, see [references/frameworks.md](./references/frameworks.md). The key condition: each of the 4 roles must have subtasks that are genuinely parallel and require separate context budgets. If the tasks are sequential, prefer a single agent with compressed tool outputs.
 
 ## Guidelines
 

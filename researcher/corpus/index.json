@@ -75,6 +75,13 @@
       "claim_ids": []
     },
     {
+      "name": "latent-briefing",
+      "path": "skills/latent-briefing/SKILL.md",
+      "activation_scenarios": ["orchestrator-worker KV cache sharing", "Attention Matching compaction", "cross-agent state transfer without summarization", "token explosion in hierarchical agents"],
+      "mechanism_ids": [],
+      "claim_ids": []
+    },
+    {
       "name": "memory-systems",
       "path": "skills/memory-systems/SKILL.md",
       "activation_scenarios": ["cross-session memory", "entity tracking", "temporal knowledge graphs", "memory benchmark selection"],

@@ -27,6 +27,8 @@ export interface ResolvedConfig {
   fixturePath: string;
   dryRun: boolean;
   unsafeNoCostCap: boolean;
+  concurrency: number;
+  noResume: boolean;
 }
 
 export interface RunPlanItem {
@@ -45,12 +47,14 @@ export interface CliFlags {
   fixture?: string;
   dryRun: boolean;
   unsafeNoCostCap: boolean;
+  concurrency?: number;
+  noResume: boolean;
 }
 
 const DEFAULT_MODELS = ["composer-2"];
 
 export function parseCliFlags(argv: string[]): CliFlags {
-  const flags: CliFlags = { dryRun: false, unsafeNoCostCap: false };
+  const flags: CliFlags = { dryRun: false, unsafeNoCostCap: false, noResume: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     switch (arg) {
@@ -59,6 +63,9 @@ export function parseCliFlags(argv: string[]): CliFlags {
         break;
       case "--unsafe-no-cost-cap":
         flags.unsafeNoCostCap = true;
+        break;
+      case "--no-resume":
+        flags.noResume = true;
         break;
       case "--models":
         flags.models = (argv[++i] ?? "").split(",").map((value) => value.trim()).filter(Boolean);
@@ -77,6 +84,9 @@ export function parseCliFlags(argv: string[]): CliFlags {
         break;
       case "--fixture":
         flags.fixture = argv[++i] ?? "";
+        break;
+      case "--concurrency":
+        flags.concurrency = Number(argv[++i]);
         break;
       default:
         if (arg?.startsWith("--")) {
@@ -106,7 +116,44 @@ export function resolveConfig(
     fixturePath: flags.fixture ?? defaultFixturePath,
     dryRun: flags.dryRun,
     unsafeNoCostCap: flags.unsafeNoCostCap,
+    concurrency: flags.concurrency && flags.concurrency > 0 ? flags.concurrency : 1,
+    noResume: flags.noResume,
   };
+}
+
+/**
+ * Bounded-concurrency executor. Runs `worker(item, index)` for every input,
+ * keeping at most `limit` workers active at any time. Preserves output order.
+ * Failures inside a worker bubble up; callers are expected to wrap workers in
+ * their own try/catch when partial failure is acceptable.
+ */
+export async function runConcurrently<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  const concurrency = Math.max(1, Math.min(limit, items.length));
+  let next = 0;
+  async function run(): Promise<void> {
+    while (true) {
+      const index = next++;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index] as T, index);
+    }
+  }
+  const workers = Array.from({ length: concurrency }, () => run());
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * Pure-function key derivation for a per-run result file. Used both by the
+ * runner (when writing) and the resume scan (when checking). Keeping this in
+ * one place prevents the two from drifting.
+ */
+export function resultFileName(promptId: string, modelId: string, rep: number): string {
+  return `${promptId}-${modelId}-${rep}.json`;
 }
 
 export function loadJsonl<T>(path: string): T[] {

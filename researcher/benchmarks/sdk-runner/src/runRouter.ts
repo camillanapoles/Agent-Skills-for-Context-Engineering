@@ -18,7 +18,7 @@
  */
 
 import { join } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import {
   RESEARCHER_DIR,
@@ -34,6 +34,8 @@ import {
   parseCliFlags,
   repoCommitSha,
   resolveConfig,
+  resultFileName,
+  runConcurrently,
   runHeader,
   shuffleSeeded,
   todayUtc,
@@ -83,6 +85,8 @@ async function main(): Promise<number> {
   console.log(`models: ${config.models.join(", ")}`);
   console.log(`reps per (prompt, model): ${config.reps}`);
   console.log(`seed: ${config.seed}`);
+  console.log(`concurrency: ${config.concurrency}`);
+  console.log(`resume: ${!config.noResume}`);
   console.log(`dry-run: ${config.dryRun}`);
   console.log(`api key: ${apiKeyFingerprint()}`);
 
@@ -138,13 +142,24 @@ async function main(): Promise<number> {
   const { Agent, CursorAgentError } = cursorSdk;
 
   const promptTemplate = await loadPromptTemplate();
-  const results: RouterRunRecord[] = [];
   const runDir = join(RESULTS_DIR, `${todayUtc()}-${config.seed}`);
   mkdirSync(runDir, { recursive: true });
 
-  for (const item of plan) {
+  const existingResults = config.noResume ? new Map<string, RouterRunRecord>() : loadExistingResults(runDir);
+  const remaining = plan.filter((item) => !existingResults.has(resultFileName(item.promptId, item.modelId, item.rep)));
+  if (existingResults.size) {
+    console.log(`resume: ${existingResults.size} prior results found, ${remaining.length} runs remaining`);
+  }
+
+  const totalToExecute = remaining.length;
+  const startedAt = Date.now();
+  let completed = 0;
+  const newResults: RouterRunRecord[] = [];
+  const printLock = { value: Promise.resolve() };
+
+  await runConcurrently(remaining, config.concurrency, async (item, _index) => {
     const prompt = prompts.find((p) => p.prompt_id === item.promptId);
-    if (!prompt) continue;
+    if (!prompt) return;
     const shuffledSkills = shuffleSeeded(skills, item.shuffleSeed);
     const filled = renderPrompt(promptTemplate, shuffledSkills, prompt.prompt);
 
@@ -183,9 +198,26 @@ async function main(): Promise<number> {
         record.notes = (error as Error).message;
       }
     }
-    results.push(record);
-    writeJson(join(runDir, `${item.promptId}-${item.modelId}-${item.rep}.json`), record);
-  }
+    writeJson(join(runDir, resultFileName(item.promptId, item.modelId, item.rep)), record);
+    newResults.push(record);
+
+    completed++;
+    const elapsedMs = Date.now() - startedAt;
+    const avgMs = elapsedMs / completed;
+    const remainingMs = Math.round(avgMs * (totalToExecute - completed));
+    const top1 = record.top1_correct === true ? "T1" : record.top1_correct === false ? "  " : "??";
+    const padded = String(completed).padStart(4, " ");
+    const total = String(totalToExecute).padStart(4, " ");
+    const line = `[${padded}/${total}] ${item.modelId.padEnd(20)} ${item.promptId} rep=${item.rep} ${record.status.padEnd(18)} ${(record.duration_ms ?? 0)
+      .toString()
+      .padStart(5, " ")}ms ${top1} ETA=${formatDuration(remainingMs)}`;
+    // Serialize console writes so concurrent workers do not interleave lines.
+    printLock.value = printLock.value.then(() => {
+      console.log(line);
+    });
+  });
+
+  const results: RouterRunRecord[] = [...existingResults.values(), ...newResults];
 
   const summary = summarize(results, prompts);
   const metadata = {
@@ -239,6 +271,34 @@ function parseRouterJson(raw: string): string[] | null {
   } catch {
     return null;
   }
+}
+
+function loadExistingResults(runDir: string): Map<string, RouterRunRecord> {
+  const map = new Map<string, RouterRunRecord>();
+  if (!existsSync(runDir)) return map;
+  for (const entry of readdirSync(runDir)) {
+    if (entry === "summary.json" || !entry.endsWith(".json")) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(join(runDir, entry), "utf-8")) as RouterRunRecord;
+      if (parsed && parsed.prompt_id && parsed.model_id !== undefined && parsed.rep !== undefined) {
+        map.set(entry, parsed);
+      }
+    } catch {
+      // Skip malformed leftovers; next sweep will overwrite.
+    }
+  }
+  return map;
+}
+
+function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "unknown";
+  const totalSec = Math.round(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h${m.toString().padStart(2, "0")}m`;
+  if (m > 0) return `${m}m${s.toString().padStart(2, "0")}s`;
+  return `${s}s`;
 }
 
 function summarize(results: RouterRunRecord[], prompts: RouterPrompt[]): Record<string, unknown> {

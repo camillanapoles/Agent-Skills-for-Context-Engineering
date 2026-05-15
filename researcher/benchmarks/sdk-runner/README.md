@@ -37,6 +37,8 @@ Flags shared by both runners:
 - `--seed <N>`: deterministic shuffling of skill order and tie-breaking.
 - `--fixture <path>`: alternate fixture JSONL.
 - `--dry-run`: print plan, do not call the SDK.
+- `--concurrency <N>`: bounded parallel SDK calls (default 1). 4 to 8 is reasonable; respect Cursor rate limits.
+- `--no-resume`: ignore existing per-run results in the destination directory and re-execute everything. Default is to resume by skipping any plan item that already has a result file.
 
 ## Output
 

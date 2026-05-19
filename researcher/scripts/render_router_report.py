@@ -243,10 +243,10 @@ def render(summary: dict[str, dict[str, Any]], confusion: dict[str, dict[str, in
         f"--seed {meta.get('seed')} "
         "--max-budget-usd 15"
     )
-    lines.append("python3 researcher/scripts/render_router_report.py \\")
-    lines.append("    --results researcher/benchmarks/router/results/<date>-<seed> \\")
-    lines.append("    --fixture researcher/benchmarks/router/prompts.jsonl \\")
-    lines.append("    --output researcher/benchmarks/router/results-published/<date>.md")
+    lines.append("python3 ../../scripts/render_router_report.py \\")
+    lines.append("    --results ../router/results/<date>-<seed> \\")
+    lines.append("    --fixture ../router/prompts.jsonl \\")
+    lines.append("    --output ../router/results-published/<date>.md")
     lines.append("```")
     lines.append("")
     lines.append(

@@ -112,13 +112,31 @@ The aggregate moved by ~1pp; individual skills moved by 25pp. **The aggregate is
 
 End to end from "the v2.2.0 benchmark finished" to "v2.3.0 measured the rewrites" was under two hours of focused work. This is the cheapest, highest-leverage feedback loop in the system. Future contributions should run it whenever a skill description changes.
 
+### The shortcut we corrected
+
+The first post-benchmark fix was too narrow: rewrite three descriptions, align those three bodies, and call the release ready. That improved the measured router surface, but it did not make the whole repo better through auto-research.
+
+The correction was a corpus-wide hardening pass. Three read-only audits looked at activation boundaries, mechanism and claim coverage, and the skill-quality standard. Then every skill was brought under the same rule: explicit owned scope, explicit adjacent routes, practical guidance an agent can execute, examples, gotchas, integration as a boundary map, and machine-readable mechanisms/claims where the prose makes reusable or volatile claims.
+
+Concrete result:
+
+- `bdi-mental-states` and `hosted-agents` were no longer structural outliers; both gained missing practical guidance/examples and passed strict health.
+- Mechanisms increased from 5 to 16, so every skill now owns at least one accepted behavior pattern.
+- Claim provenance increased from 6 to 12, with concrete repo source paths replacing vague research-run summaries.
+- Activation fixtures increased from 14 to 19, covering previously untested skills.
+- `validate_repo.py --strict` now enforces full body sections and explicit non-activation boundaries.
+- Skill health moved from 0.8111 with 2 flagged skills to 0.9117 with 0 flagged skills.
+- A fresh 600-record router sweep on May 19 verified the corpus-wide pass did not introduce broad routing collapse: 0 format failures after retrying transient blanks, Gemini 0.920 top-1, Composer 0.913, GPT-5.5 0.913, Claude Opus 4.7 0.840. The remaining failures are still concentrated in ambiguous/negative-control prompts and the `context-fundamentals` catch-all boundary.
+
+This is the release's real lesson: improving a skill corpus means changing prose, metadata, and gates together. A prettier SKILL.md without updated mechanisms, claims, corpus index, fixtures, and validators is not self-improving.
+
 ### What v2.3.0 inherits from v2.2.0
 
 Everything that shipped in v2.2.0 is still here: the file-based researcher operating system, the run state machine, the continuous loop, the launchd service definitions, the deterministic gates, the adversarial benchmark scenarios. v2.3.0 adds the measured results and the description fixes that those results justified.
 
 ## What v2.3.0 Actually Ships
 
-Five concrete pieces of infrastructure, plus updates to all 15 skills:
+Five concrete pieces of infrastructure, plus a corpus-wide hardening pass across all 15 skills:
 
 1. **Researcher operating system** under `researcher/`: source registry, content/skill/harness rubrics, pairwise revision rubric, mechanism registry, mechanism ledgers, claim provenance index, corpus index, activation regression fixtures, adversarial benchmark scenarios with goldens, append-only benchmark history.
 
@@ -130,7 +148,7 @@ Five concrete pieces of infrastructure, plus updates to all 15 skills:
 
 5. **Documentation**: `CHANGELOG.md`, refreshed `README.md` / `CLAUDE.md` / `CONTRIBUTING.md`, `AGENTS.md` for workspace memory, `researcher/runs/README.md` for operator orientation, and the two insight documents (this one and `auto-research-experiment.md`).
 
-By the numbers: 15 published skills, 5 seeded mechanisms, 6 seeded claims, **14 activation cases** (up from 8), 7 adversarial benchmark scenarios, 1 worked-example seed run, 50 router benchmark prompts, **1200 measured agent calls** across two sweeps (600 baseline + 600 post-fix), 4 frontier models evaluated, 1 worked-example effectiveness task scaffolded.
+By the numbers: 15 published skills, **16 accepted mechanisms**, **12 provenance-tracked claims**, **19 activation cases** (up from 8), 7 adversarial benchmark scenarios, 1 worked-example seed run, 50 router benchmark prompts, **1,800 completed router benchmark records** across three sweeps (baseline, post-description rewrite, post-corpus hardening), 4 frontier models evaluated, 1 worked-example effectiveness task scaffolded, and a strict skill-health score of **0.9117 with 0 flagged skills**.
 
 ## What You Should Tell People
 
@@ -256,7 +274,7 @@ The 10k-star skill repository was at a fork: stay an anthology, or become infras
 - Live execution as the validation gate
 
 ## 5. The lessons
-(13 findings from researcher/insights/auto-research-experiment.md)
+(17 findings from researcher/insights/auto-research-experiment.md)
 
 ## 6. What it does not solve yet
 Honest list of out-of-scope items
@@ -281,7 +299,7 @@ The 2.2.0 release deliberately left several things off. These are the obvious ne
 
 5. **More activation cases** as skill boundaries get challenged in the wild. Each confusion that shows up in user activations should become a fixture.
 
-6. **More claim provenance**. The current 6 claims cover the highest-volatility ones; the corpus has dozens of softer claims that would benefit from explicit provenance.
+6. **More claim provenance**. The current 12 claims cover the highest-volatility ones; the corpus has additional softer claims that would benefit from explicit provenance.
 
 7. **Self-spawning agents for parallel runs**. The loop currently processes one run per step. With proper locking and per-run budget tracking, parallel runs are safe and would amortize cost.
 
@@ -295,6 +313,7 @@ This section is necessarily an inference. Adjust before sharing.
 
 - A repository with this many stars is a public surface, and that surface benefits more from infrastructure than from more content. The instinct to add another skill is almost always less valuable than the instinct to add another gate.
 - The cheapest way to compound a knowledge base is to make its units machine-readable. Mechanisms, claims, activation scenarios, run states, benchmark scenarios. Prose is publication, not memory.
+- "Improve all skills" means improving the corpus substrate, not just editing Markdown. The mechanism registry, claim index, corpus index, activation cases, validators, and template have to move with the skill bodies.
 - "Run it for days" is a real architectural milestone, not a feature flag. The system has to be designed for unattended operation from the beginning.
 - Subagent code review is the cheapest way to find category-of-error bugs that you would otherwise hit in production.
 - Plan mode for irreversible decisions, agent mode for everything else. Mixing them silently is how scope creep happens.

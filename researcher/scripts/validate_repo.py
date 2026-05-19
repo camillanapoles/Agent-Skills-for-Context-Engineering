@@ -149,11 +149,20 @@ class Validator:
                 self.warn(skill_file, "description may not be third person")
             if len(lines) > 500:
                 self.error(skill_file, f"SKILL.md exceeds 500 lines ({len(lines)})")
-            for section in ["## When to Activate", "## Guidelines", "## Gotchas", "## Integration"]:
+            for section in [
+                "## When to Activate",
+                "## Core Concepts",
+                "## Practical Guidance",
+                "## Examples",
+                "## Guidelines",
+                "## Gotchas",
+                "## Integration",
+                "## References",
+            ]:
                 if section not in text:
                     self.error(skill_file, f"missing required section: {section}")
-            if "## References" not in text:
-                self.warn(skill_file, "missing References section")
+            if "Do not activate" not in text:
+                self.warn(skill_file, "missing explicit non-activation boundary")
 
         return sorted(skill_names)
 

@@ -165,9 +165,26 @@ The v1 router runner ran sequentially, had no resume capability, and printed not
 - How far it had gotten (had to count files in the results directory).
 - That we would have to redo everything (no resume meant any restart was a full do-over).
 
-The v2 runner has all three. The v2 sweep ran in 15 minutes with full visibility and complete coverage. Same code path, same SDK, same models.
+The v2 runner has all three. The v2 sweep ran in 15 minutes with full visibility and complete coverage. Same code path, same SDK, same models. The May 19 corpus-hardening sweep added one more operational lesson: transient empty/format-failed SDK responses should be retried once before being counted. The full 600-record sweep initially had 15 format failures, all of which completed successfully when rerun through resume. The runner now has an automatic format-failure retry.
 
-Takeaway: any runner that calls a paid API in a loop needs: bounded parallelism with a concurrency flag; resume that scans the results directory and skips completed work; per-run progress logging that surfaces stalls in less than the time it takes to finish one call. These are not optimization. They are baseline competence.
+Takeaway: any runner that calls a paid API in a loop needs: bounded parallelism with a concurrency flag; resume that scans the results directory and skips completed work; per-run progress logging that surfaces stalls in less than the time it takes to finish one call; and one retry for transient empty or unparsable outputs. These are not optimization. They are baseline competence.
+
+### 17. A skill is not improved until the corpus metadata improves with it
+
+The user was right to call out the shortcut. Rewriting descriptions and aligning three skill bodies was not enough. It improved the router surface, but it left the rest of the corpus with uneven body standards, missing mechanism ownership, weak claim provenance, and untested activation boundaries.
+
+The corpus-wide hardening pass changed the unit of work from "fix the skills the benchmark complained about" to "make every skill pass the same publication standard." That meant:
+
+- Every skill body got explicit ownership boundaries and adjacent `Do not activate` routes.
+- Structurally weak bodies (`bdi-mental-states`, `hosted-agents`) gained practical guidance and examples.
+- Every skill was mapped to at least one accepted mechanism in `researcher/mechanisms/registry.jsonl`.
+- Volatile numeric/vendor claims were softened or tied to `claim-*` IDs with concrete source paths.
+- Activation fixtures grew to cover previously untested skills, not just the benchmark-confused ones.
+- `validate_repo.py --strict` was tightened so required body sections and non-activation boundaries are enforced.
+
+The result was measurable without another paid SDK sweep: skill health moved from 0.8111 with two flagged skills to 0.9117 with zero flagged skills; strict validation passed with zero warnings; activation cases passed 19/19; adversarial deterministic benchmarks passed 7/7 scenarios.
+
+Takeaway: auto-research should improve three layers at once: prose, metadata, and gates. If only the prose changes, the corpus becomes prettier but not more self-improving.
 
 ## What This Experiment Did Not Solve
 
@@ -177,7 +194,7 @@ Honest list, not aspirations:
 - **No automated source discovery beyond the manual seed**: feed adapters for Parallel deep research, web search, RSS, and academic preprints are placeholders.
 - **No log rotation**: per-script logs grow indefinitely. Acceptable for weeks, not years.
 - **No pytest suite**: scripts are smoke-tested via live execution and the deterministic gates. Real unit/integration tests would catch refactor regressions earlier.
-- **No PR-quality benchmarks for skill content**: benchmarks test the harness. Whether the skills themselves stay high quality is still editorial.
+- **No full-body effectiveness benchmark yet**: deterministic health now measures skill-body structure, but Stage 3 still needs real agent tasks with and without full skills loaded.
 
 ## Reusable Patterns For Future Work
 
@@ -194,8 +211,9 @@ Patterns from this experiment that are worth carrying into other agentic systems
 9. **Run live before declaring done** for any orchestration code.
 10. **Treat continuous operation as a separate milestone** from per-task correctness.
 11. **The description-benchmark loop** for any system where natural-language descriptions affect routing: baseline benchmark, read the confusion matrix, rewrite based on specific leak directions, re-run with the same seed and fixture, publish the delta.
-12. **Resume-by-results-folder-scan + bounded concurrency + per-run progress logging** as the three non-negotiable runner features for any paid-API loop.
+12. **Resume-by-results-folder-scan + bounded concurrency + per-run progress logging + format-failure retry** as the non-negotiable runner features for any paid-API loop.
 13. **Audit the body the same day the description changes.** A skill is a multi-surface artifact; the `When to Activate` body section is a second routing surface and must not contradict the frontmatter description. The router benchmark cannot catch body-vs-description inconsistencies because router prompts only contain descriptions.
+14. **Update prose, metadata, and gates together.** A skill improvement is incomplete until the body text, mechanism registry, claim provenance, corpus index, activation fixtures, and validators all agree.
 
 ## How To Use This Document
 

@@ -154,7 +154,7 @@ See `multi-agent-patterns` skill for detailed architecture guidance.
 
 Start with minimal architecture and add complexity only when production evidence proves it necessary, because over-engineered scaffolding often constrains rather than enables model performance.
 
-Vercel's d0 agent achieved 100% success rate (up from 80%) by reducing from 17 specialized tools to 2 primitives: bash command execution and SQL. The file system agent pattern uses standard Unix utilities (grep, cat, find, ls) instead of custom exploration tools.
+Vercel's d0 case study reports improved success after reducing many specialized tools to two primitives: command execution and SQL (claim-project-development-vercel-d0-reduction). The file system agent pattern uses standard Unix utilities instead of custom exploration tools.
 
 **Reduce when:**
 - The data layer is well-documented and consistently structured
@@ -233,9 +233,9 @@ Results: $58 total cost, ~1 hour execution, static HTML output.
 
 Task: Text-to-SQL agent for internal analytics.
 
-Before: 17 specialized tools, 80% success rate, 274s average execution.
+Before: many specialized tools with lower measured success and longer average execution.
 
-After: 2 tools (bash + SQL), 100% success rate, 77s average execution.
+After: two tools (bash + SQL) with higher measured success and shorter average execution (claim-project-development-vercel-d0-reduction).
 
 Key insight: The semantic layer was already good documentation. Claude just needed access to read files directly.
 
@@ -301,4 +301,4 @@ External resources:
 **Created**: 2025-12-25
 **Last Updated**: 2026-05-15
 **Author**: Agent Skills for Context Engineering Contributors
-**Version**: 1.2.0
+**Version**: 1.3.0

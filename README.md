@@ -215,10 +215,11 @@ The [researcher](researcher/) directory is a file-based operating system for tur
 
 ### Measured router-benchmark results
 
-The skill router (which decides whether the right skill gets loaded for a given task) has been benchmarked end-to-end against four frontier models via the [Cursor SDK](https://cursor.com/docs/sdk/typescript). Two full sweeps (50 prompts x 4 models x 3 replications = 600 calls each):
+The skill router (which decides whether the right skill gets loaded for a given task) has been benchmarked end-to-end against four frontier models via the [Cursor SDK](https://cursor.com/docs/sdk/typescript). Three full sweeps (50 prompts x 4 models x 3 replications = 600 calls each):
 
 - Baseline: [`researcher/benchmarks/router/results-published/2026-05-15.md`](researcher/benchmarks/router/results-published/2026-05-15.md)
 - After targeted description rewrites: [`researcher/benchmarks/router/results-published/2026-05-15-v2.md`](researcher/benchmarks/router/results-published/2026-05-15-v2.md) (includes delta-vs-baseline)
+- After corpus-wide hardening: [`researcher/benchmarks/router/results-published/2026-05-19.md`](researcher/benchmarks/router/results-published/2026-05-19.md) (600/600 usable records, 0 format failures)
 
 Per-skill effect size for the three skills the data flagged:
 
@@ -228,14 +229,14 @@ Per-skill effect size for the three skills the data flagged:
 | `project-development` | 0.750 | 1.000 | +25pp (now perfect) |
 | `tool-design` | 0.729 | 0.807 | +7.8pp |
 
-Per-model top-1 accuracy after the rewrites:
+Per-model top-1 accuracy after the corpus-wide hardening pass:
 
 | Model | Top-1 | Top-3 |
 | --- | --- | --- |
-| composer-2 | 0.913 | 0.973 |
-| gpt-5.5 | 0.913 | 0.953 |
-| gemini-3.1-pro | 0.925 | 0.932 |
-| claude-opus-4-7 | 0.867 | 0.953 |
+| gemini-3.1-pro | 0.920 | 0.933 |
+| composer-2 | 0.913 | 0.947 |
+| gpt-5.5 | 0.913 | 0.973 |
+| claude-opus-4-7 | 0.840 | 0.933 |
 
 Reproduce any of these numbers exactly via the runner under `researcher/benchmarks/sdk-runner/`.
 
@@ -243,19 +244,21 @@ Reproduce any of these numbers exactly via the runner under `researcher/benchmar
 
 - **Source registry** (`researcher/source-registry.md`): priority sources, exclusion rules, monitoring queries.
 - **Rubrics** (`researcher/rubrics/`): content curation, skill change, harness change, pairwise skill revision.
-- **Mechanism registry** (`researcher/mechanisms/registry.jsonl` + `ledgers/`): accepted behavior changes used as the primary novelty signal, with append-only accepted/rejected ledgers for institutional memory.
-- **Claim provenance** (`researcher/claims/index.jsonl`): per-claim source URL, evidence strength, volatility, last reviewed date.
+- **Mechanism registry** (`researcher/mechanisms/registry.jsonl` + `ledgers/`): 16 accepted behavior changes used as the primary novelty signal, with append-only accepted/rejected ledgers for institutional memory.
+- **Claim provenance** (`researcher/claims/index.jsonl`): 12 provenance-tracked claims with source URL, evidence strength, volatility, and last reviewed date.
 - **Corpus index** (`researcher/corpus/index.json`): canonical machine-readable map of skills, activation scenarios, mechanism IDs, and claim IDs.
 - **Run state machine** (`researcher/runs/<run-id>/run-state.json`): `initialized -> retrieved -> evaluated -> proposed -> novelty_checked -> validated -> pr_ready -> closed`.
-- **Activation regression tests** (`researcher/fixtures/activation-cases.jsonl`): deterministic prompts that catch skill-boundary confusion.
+- **Activation regression tests** (`researcher/fixtures/activation-cases.jsonl`): 19 deterministic prompts that catch skill-boundary confusion.
 - **Adversarial benchmark harness** (`researcher/benchmarks/`): scenarios that try to game the loop (duplicate mechanisms, unretrieved evidence, wrong rubric math, self-approved rubric changes, weak-evidence novelty).
 - **Continuous loop** (`researcher/scripts/loop_*.py` + `researcher/orchestration/launchd/`): inbox, source discovery, one-state-at-a-time advancement, daily ops, parked review queue, launchd service definitions.
+- **Skill health gate** (`researcher/scripts/skill_health.py`): deterministic body-quality scoring; current strict corpus score is 0.9117 with 0 flagged skills.
 
 ### Operator commands
 
 ```bash
 # Deterministic gates (also run in CI on every PR)
 python3 researcher/scripts/validate_repo.py --strict
+python3 researcher/scripts/skill_health.py --strict --no-history
 python3 researcher/scripts/run_benchmarks.py
 python3 researcher/scripts/check_activation_cases.py
 

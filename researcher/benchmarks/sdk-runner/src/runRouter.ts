@@ -57,6 +57,7 @@ interface RouterRunRecord {
   model_id: string;
   rep: number;
   shuffle_seed: number;
+  attempts?: number;
   status: "format_failure" | "model_unavailable" | "finished" | "error" | "cancelled" | "dry_run";
   duration_ms?: number;
   predicted_primary?: string;
@@ -75,6 +76,7 @@ const HISTORY_PATH = join(RESEARCHER_DIR, "reports", "router-history.jsonl");
 const ESTIMATED_TOKENS_INPUT = 4000;
 const ESTIMATED_TOKENS_OUTPUT = 400;
 const ESTIMATED_USD_PER_RUN = 0.012;
+const MAX_FORMAT_ATTEMPTS = 2;
 
 async function main(): Promise<number> {
   const flags = parseCliFlags(process.argv.slice(2));
@@ -106,11 +108,25 @@ async function main(): Promise<number> {
     config.reps,
     config.seed,
   );
-  const forecast = forecastCost(plan, ESTIMATED_TOKENS_INPUT, ESTIMATED_TOKENS_OUTPUT, ESTIMATED_USD_PER_RUN);
+  const forecast = forecastCost(
+    plan,
+    ESTIMATED_TOKENS_INPUT,
+    ESTIMATED_TOKENS_OUTPUT,
+    ESTIMATED_USD_PER_RUN * MAX_FORMAT_ATTEMPTS,
+  );
+  const worstCaseInvocations = plan.length * MAX_FORMAT_ATTEMPTS;
   console.log(`planned runs: ${forecast.totalRuns}`);
   console.log(`est. tokens per run: ${ESTIMATED_TOKENS_INPUT}in / ${ESTIMATED_TOKENS_OUTPUT}out`);
-  console.log(`est. total cost: ${forecast.estimatedTotalUsd} USD`);
+  console.log(`max attempts per run: ${MAX_FORMAT_ATTEMPTS}`);
+  console.log(`max SDK invocations: ${worstCaseInvocations}`);
+  console.log(`est. worst-case total cost: ${forecast.estimatedTotalUsd} USD`);
 
+  if (worstCaseInvocations > config.maxRuns) {
+    throw new Error(
+      `Worst-case SDK invocations ${worstCaseInvocations} exceeds --max-runs ${config.maxRuns}. ` +
+        "Increase --max-runs or lower the plan size.",
+    );
+  }
   assertBudget(plan, forecast, config);
 
   if (config.dryRun) {
@@ -168,29 +184,32 @@ async function main(): Promise<number> {
       model_id: item.modelId,
       rep: item.rep,
       shuffle_seed: item.shuffleSeed,
+      attempts: 0,
       status: "error",
     };
     const started = Date.now();
     try {
-      const result = await Agent.prompt(filled, {
-        apiKey: process.env.CURSOR_API_KEY!,
-        model: { id: item.modelId },
-        local: { cwd: REPO_ROOT, settingSources: [] },
-      });
-      record.duration_ms = Date.now() - started;
-      record.status = result.status;
-      record.raw_text = result.result ?? "";
-      const parsed = parseRouterJson(result.result ?? "");
-      if (!parsed) {
+      for (let attempt = 1; attempt <= MAX_FORMAT_ATTEMPTS; attempt++) {
+        record.attempts = attempt;
+        const result = await Agent.prompt(filled, {
+          apiKey: process.env.CURSOR_API_KEY!,
+          model: { id: item.modelId },
+          local: { cwd: REPO_ROOT, settingSources: [] },
+        });
+        record.status = result.status;
+        record.raw_text = result.result ?? "";
+        const parsed = parseRouterJson(result.result ?? "");
+        if (parsed) {
+          record.predicted_primary = parsed[0];
+          record.predicted_top3 = parsed.slice(0, 3);
+          record.top1_correct = parsed[0] === prompt.expected_primary_skill;
+          record.top3_correct = parsed.slice(0, 3).includes(prompt.expected_primary_skill);
+          break;
+        }
         record.status = "format_failure";
-      } else {
-        record.predicted_primary = parsed[0];
-        record.predicted_top3 = parsed.slice(0, 3);
-        record.top1_correct = parsed[0] === prompt.expected_primary_skill;
-        record.top3_correct = parsed.slice(0, 3).includes(prompt.expected_primary_skill);
+        record.notes = attempt < MAX_FORMAT_ATTEMPTS ? "format failure; retrying once" : "format failure after retry";
       }
     } catch (error) {
-      record.duration_ms = Date.now() - started;
       if (CursorAgentError && error instanceof CursorAgentError) {
         record.status = "model_unavailable";
         record.notes = error.message;
@@ -198,6 +217,7 @@ async function main(): Promise<number> {
         record.notes = (error as Error).message;
       }
     }
+    record.duration_ms = Date.now() - started;
     writeJson(join(runDir, resultFileName(item.promptId, item.modelId, item.rep)), record);
     newResults.push(record);
 

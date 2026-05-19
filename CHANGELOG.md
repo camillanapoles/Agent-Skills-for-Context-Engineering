@@ -20,6 +20,7 @@ First release with measured benchmark results across four frontier models, closi
 - **Resume**: scans the destination directory on startup and skips plan items that already have a per-run JSON. A killed sweep can be picked up exactly where it stopped; no wasted credits, no duplicate runs.
 - **Bounded parallelism**: `--concurrency N` runs N agent calls simultaneously. Cuts the 600-run sweep from ~60 minutes (sequential) to ~15 minutes (concurrency=4) with identical correctness.
 - **Per-run progress logging**: every completed run prints `[N/total] model prompt rep=R status durationMs T1 ETA=duration`. The v1 sweep silently stalled at 566 of 600 with no signal; the v2 sweep would have surfaced the cause immediately.
+- **Format-failure retry**: transient empty or unparsable SDK responses are retried once before being recorded as format failures. This was added after the May 19 sweep produced transient blank outputs that succeeded on rerun.
 - `runConcurrently` helper in `common.ts`, reusable by future runners.
 
 #### Skill description rewrites (data-driven)
@@ -40,18 +41,39 @@ The router benchmark only sees frontmatter `description` because `settingSources
 
 The body changes do not affect router-benchmark numbers (the router sees only descriptions) but they do affect what the agent loads when these skills activate. Stage 3 (effectiveness benchmark, which loads full bodies) is the right place to measure the impact of this alignment.
 
-#### Six new boundary regression cases
+#### Corpus-wide skill hardening pass
 
-`researcher/fixtures/activation-cases.jsonl` grew from 8 to 14 cases. Each new case targets a specific confusion observed in the v2.2.0 baseline:
+After the targeted three-skill body alignment, every published skill was audited against the same standard: explicit ownership boundary, `Do not activate` routing, executable practical guidance, examples, gotchas, integration boundaries, mechanism coverage, claim provenance, and activation fixtures.
+
+- Updated all 15 skill bodies with scoped improvements, including structural fixes for `bdi-mental-states` and `hosted-agents`, stronger negative routing across older skills, clearer examples for context failure modes, and claim-backed wording for volatile benchmark statements.
+- Expanded `researcher/mechanisms/registry.jsonl` from 5 to 16 accepted mechanisms so every published skill owns at least one machine-readable behavior pattern.
+- Expanded claim provenance from 6 to 12 records and replaced vague run-summary sources with concrete repo paths for BrowseComp, RULER/lost-in-middle, compression, d0, Latent Briefing, memory, and tool-output claims.
+- Expanded activation regression coverage from 14 to 19 cases so every skill has deterministic routing coverage, including `bdi-mental-states`, `context-degradation`, `hosted-agents`, `latent-briefing`, and `multi-agent-patterns`.
+- Tightened `validate_repo.py --strict` so `Core Concepts`, `Practical Guidance`, `Examples`, `References`, and explicit non-activation boundaries are now enforced rather than optional.
+- Updated `template/SKILL.md` with the new corpus-wide standard: body/frontmatter alignment, mechanism registration, executable guidance, and `claim-*` provenance for volatile claims.
+- Re-ran the no-API gates after the pass: `validate_repo.py --strict` passed with 0 errors / 0 warnings; `skill_health.py --strict --no-history` improved from corpus score 0.8111 / 2 flagged skills to 0.9117 / 0 flagged skills; `check_activation_cases.py` passed 19/19; `run_benchmarks.py` passed 3 checks and 7 adversarial scenarios.
+- Re-ran the paid Stage 2 router benchmark after the corpus-wide pass: 600/600 usable records, 0 format failures after retrying transient format failures, published at `researcher/benchmarks/router/results-published/2026-05-19.md`. Per-model top-1: Gemini 0.920, Composer 0.913, GPT-5.5 0.913, Claude Opus 4.7 0.840. Remaining failures are concentrated in known ambiguous/negative-control prompts (`p046`, `p048`) and the `context-fundamentals` catch-all boundary.
+
+#### Eleven new boundary regression cases
+
+`researcher/fixtures/activation-cases.jsonl` grew from 8 to 19 cases. The first six new cases target specific confusions observed in the v2.2.0 baseline:
 
 - `activation-fundamentals-vs-degradation`, `activation-fundamentals-onboarding`, `activation-fundamentals-vs-optimization`
 - `activation-tool-vs-project-structured-output`, `activation-tool-individual-tool`, `activation-tool-consolidation`
 
 These act as a tripwire so any future description change is held accountable.
 
+The corpus-wide pass added five more cases for previously uncovered skills:
+
+- `activation-bdi-vs-memory`
+- `activation-degradation-poisoning`
+- `activation-hosted-vs-harness`
+- `activation-latent-briefing-vs-memory`
+- `activation-multi-agent-topology`
+
 #### Stage 1 skill health (still no API cost)
 
-- `researcher/scripts/skill_health.py`: per-skill structural scoring. Initial corpus baseline: 0.814 aggregate, 2 of 15 skills flagged (`bdi-mental-states` for missing required section, `hosted-agents` for multiple structural issues).
+- `researcher/scripts/skill_health.py`: per-skill structural scoring. Initial corpus baseline: 0.8111 aggregate, 2 of 15 skills flagged (`bdi-mental-states` for missing required section, `hosted-agents` for multiple structural issues). After the corpus-wide hardening pass: 0.9117 aggregate, 0 flagged skills.
 - Output at `researcher/reports/skill-health.json` (gitignored runtime artifact) + optional append to `skill-health-history.jsonl`.
 
 ### Changed

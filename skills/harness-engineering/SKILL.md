@@ -18,6 +18,12 @@ Activate this skill when:
 - Adding novelty, ablation, pruning, rollback, or durable logging to an agent workflow
 - Preventing agents from gaming benchmarks, weakening rubrics, or losing state across compaction
 
+Do not activate this skill for adjacent work owned by other skills:
+- General quality gates, regression suites, or outcome metrics without autonomous control surfaces: `evaluation`.
+- Tool schemas, response formats, and recovery errors for harness tools: `tool-design`.
+- Project-level task-model fit, pipeline shape, and cost planning: `project-development`.
+- Remote sandbox, warm-pool, and hosted session infrastructure: `hosted-agents`.
+
 ## Core Concepts
 
 ### Harness Boundary
@@ -223,6 +229,6 @@ External resources:
 ## Skill Metadata
 
 **Created**: 2026-05-14
-**Last Updated**: 2026-05-14
+**Last Updated**: 2026-05-15
 **Author**: Agent Skills for Context Engineering Contributors
-**Version**: 1.0.0
+**Version**: 1.1.0

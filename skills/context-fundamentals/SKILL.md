@@ -28,12 +28,12 @@ Do not activate this skill for operational work. The specialized skills handle t
 
 ## Core Concepts
 
-Treat context as a finite attention budget, not a storage bin. Every token added competes for the model's attention and depletes a budget that cannot be refilled mid-inference. The engineering problem is maximizing utility per token against three constraints: the hard token limit, the softer effective-capacity ceiling (typically 60-70% of the advertised window), and the U-shaped attention curve that penalizes information placed in the middle of context.
+Treat context as a finite attention budget, not a storage bin. Every token added competes for the model's attention and depletes a budget that cannot be refilled mid-inference. The engineering problem is maximizing utility per token against three constraints: the hard token limit, the softer effective-capacity ceiling, and the U-shaped attention curve that penalizes information placed in the middle of context (claim-context-degradation-lost-middle-ruler).
 
 Apply four principles when assembling context:
 
 1. **Informativity over exhaustiveness** — include only what matters for the current decision; design systems that can retrieve additional information on demand.
-2. **Position-aware placement** — place critical constraints at the beginning and end of context, where recall accuracy runs 85-95%; the middle drops to 76-82% (the "lost-in-the-middle" effect).
+2. **Position-aware placement** — place critical constraints at the beginning and end of context because long-context evaluations show middle-position information is less reliably recovered than edge-position information (claim-context-degradation-lost-middle-ruler).
 3. **Progressive disclosure** — load skill names and summaries at startup; load full content only when a skill activates for a specific task.
 4. **Iterative curation** — context engineering is not a one-time prompt-writing exercise but an ongoing discipline applied every time content is passed to the model.
 
@@ -64,14 +64,14 @@ Message history serves as the agent's scratchpad memory for tracking progress, m
 Cyclically refine history: once a tool has been called deep in the conversation, the raw result rarely needs to remain verbatim. Replace stale tool outputs with compact summaries or references to reduce low-signal bulk.
 
 **Tool Outputs**
-Tool outputs typically dominate context — research shows observations can reach 83.9% of total tokens in agent trajectories. Apply observation masking: replace verbose outputs with compact references once the agent has processed the result. Retain only the five most recently accessed file contents; compress or evict older ones.
+Tool outputs often dominate context in agent trajectories (claim-context-optimization-tool-output-dominance). Apply observation masking: replace verbose outputs with compact references once the agent has processed the result. Retain only the most recently relevant file contents; compress or evict older ones.
 
 ### Context Windows and Attention Mechanics
 
 **The Attention Budget**
 For n tokens, the attention mechanism computes n-squared pairwise relationships. As context grows, the model's ability to maintain these relationships degrades — not as a hard cliff but as a performance gradient. Models trained predominantly on shorter sequences have fewer specialized parameters for context-wide dependencies, creating an effective ceiling well below the nominal window size.
 
-Design for this gradient: assume effective capacity is 60-70% of the advertised window. A 200K-token model starts degrading around 120-140K tokens, and complex retrieval accuracy can drop to as low as 15% at extreme lengths.
+Design for this gradient: assume effective capacity is materially below the advertised window until measured on the target workload. Large nominal context windows do not remove the need for task-specific degradation tests (claim-context-degradation-lost-middle-ruler).
 
 **Position Encoding Limits**
 Position encoding interpolation extends sequence handling beyond training lengths but introduces degradation in positional precision. Expect reduced accuracy for information retrieval and long-range reasoning at extended contexts compared to performance on shorter inputs.
@@ -138,7 +138,7 @@ Explain non-obvious decisions in comments.
 
 **Example 2: The Attention Budget As A Mental Model**
 
-A 200K-token model does not have 200K tokens of equally-attended context. Effective capacity is roughly 60-70% of the nominal window for complex retrieval, and the U-shaped curve penalizes information placed in the middle. When deciding how much of an upstream knowledge base to load, this is the mental model: do not ask "will it fit," ask "will the model still attend to the parts that matter."
+A large-context model does not have an equally attended context. Effective capacity is workload-specific, and the U-shaped curve penalizes information placed in the middle. When deciding how much of an upstream knowledge base to load, this is the mental model: do not ask "will it fit," ask "will the model still attend to the parts that matter."
 
 The corresponding operational question (which technique should reduce the load) belongs to `context-optimization`.
 
@@ -155,7 +155,7 @@ The corresponding operational question (which technique should reduce the load) 
 
 ## Gotchas
 
-1. **Nominal window is not effective capacity**: A model advertising 200K tokens begins degrading around 120-140K. Budget for 60-70% of the nominal window as usable capacity. Exceeding this threshold causes sudden accuracy drops, not gradual degradation — test at realistic context sizes, not toy examples.
+1. **Nominal window is not effective capacity**: A model advertising a large context window may degrade well before that limit on complex retrieval or reasoning tasks. Budget below the nominal window until your own degradation tests prove otherwise.
 
 2. **Character-based token estimates silently drift**: The ~4 characters/token heuristic for English prose breaks down for code (2-3 chars/token), URLs and file paths (each slash, dot, and colon is a separate token), and non-English text (often 1-2 chars/token). Use the provider's actual tokenizer (e.g., tiktoken for OpenAI models, Anthropic's token counting API) for any budget-critical calculation.
 
@@ -207,4 +207,4 @@ External resources:
 **Created**: 2025-12-20
 **Last Updated**: 2026-05-15
 **Author**: Agent Skills for Context Engineering Contributors
-**Version**: 2.1.0
+**Version**: 2.2.0

@@ -32,9 +32,9 @@ When adding new skills:
 4. Update the root README.md to include the new skill
 5. Update root `SKILL.md`, `.claude-plugin/marketplace.json`, and `.plugin/plugin.json` when publishing the skill
 6. Update `researcher/corpus/index.json` with the new skill's name, activation scenarios, mechanism IDs, and claim IDs
-7. Add an entry to `researcher/fixtures/activation-cases.jsonl` if the skill could be confused with an existing one
+7. Add at least one entry to `researcher/fixtures/activation-cases.jsonl`; include rejected or adjacent skills when the boundary is easy to confuse
 8. Ensure content is platform-agnostic (works across Cursor, Claude Code, etc.)
-9. Run `python3 researcher/scripts/validate_repo.py --strict` and `python3 researcher/scripts/run_benchmarks.py` before opening a PR
+9. Run `python3 researcher/scripts/validate_repo.py --strict`, `python3 researcher/scripts/skill_health.py --strict --no-history`, `python3 researcher/scripts/check_activation_cases.py`, and `python3 researcher/scripts/run_benchmarks.py` before opening a PR
 
 ## Researcher Operating System Contributions
 
@@ -81,9 +81,14 @@ The continuous loop will reap closed runs into `researcher/queue/done.jsonl` on 
 Each skill must include:
 
 - YAML frontmatter with `name` and `description` fields
-- Clear sections with logical organization
-- Practical examples where appropriate
-- Integration notes linking to related skills
+- `## When to Activate` with positive triggers and an explicit `Do not activate` boundary for adjacent skills
+- `## Core Concepts` focused on behavior-changing mechanisms, not generic background
+- `## Practical Guidance` with an executable workflow, checklist, decision table, or operating rule
+- `## Examples` with at least one worked artifact, before/after, or boundary example
+- `## Guidelines`, `## Gotchas`, `## Integration`, and `## References`
+- Integration notes that explain routing and composition boundaries, not only topical relationships
+
+Any numeric, benchmark, volatile, or vendor-performance claim in a published skill must either reference a `claim-*` ID from `researcher/claims/index.jsonl` or be softened and moved to dated reference material. Any reusable behavior pattern should be represented in `researcher/mechanisms/registry.jsonl` and linked from `researcher/corpus/index.json`.
 
 Optional additions:
 

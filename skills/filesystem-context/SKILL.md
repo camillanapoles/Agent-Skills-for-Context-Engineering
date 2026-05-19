@@ -20,6 +20,12 @@ Activate this skill when:
 - Implementing scratch pads for intermediate results
 - Terminal outputs or logs need to be accessible to agents
 
+Do not activate this skill for adjacent work owned by other skills:
+- Semantic cross-session memory, entity tracking, or temporal knowledge graphs: `memory-systems`.
+- Conversation summarization, compaction, or durable handoff wording: `context-compression`.
+- Token-efficiency tactics that do not require file-backed storage: `context-optimization`.
+- Multi-agent topology or handoff protocol design: `multi-agent-patterns`.
+
 ## Core Concepts
 
 Diagnose context failures against these four modes, because each requires a different filesystem remedy:
@@ -257,13 +263,13 @@ Result: Agent can search history file to recover details lost in summarization
 
 ## Integration
 
-This skill connects to:
+This skill owns file-backed context storage and retrieval. Adjacent skills own semantic memory, summarization, and topology:
 
-- context-optimization - Filesystem offloading is a form of observation masking
-- memory-systems - Filesystem-as-memory is a simple memory layer
-- multi-agent-patterns - Sub-agent file workspaces enable isolation
-- context-compression - File references enable lossless "compression"
-- tool-design - Tools should return file references for large outputs
+- `context-optimization`: filesystem offloading is one implementation of observation masking when full outputs remain retrievable.
+- `memory-systems`: use when file-backed notes are no longer enough and semantic, entity, or temporal retrieval is required.
+- `multi-agent-patterns`: sub-agent file workspaces enable context isolation and direct handoff.
+- `context-compression`: file references can anchor summaries and preserve details omitted from compressed context.
+- `tool-design`: tools should return file references for large outputs and expose safe read/search operations.
 
 ## References
 
@@ -285,6 +291,6 @@ External resources:
 ## Skill Metadata
 
 **Created**: 2026-01-07
-**Last Updated**: 2026-03-17
+**Last Updated**: 2026-05-15
 **Author**: Agent Skills for Context Engineering Contributors
-**Version**: 1.1.0
+**Version**: 1.2.0

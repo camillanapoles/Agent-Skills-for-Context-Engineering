@@ -27,6 +27,7 @@ No top-level build system. Repo-level gates and per-project tooling below.
 
 ```
 python3 researcher/scripts/validate_repo.py --strict       # corpus structure, manifests, rubric math, mechanism registry, claims, corpus index, activation cases, benchmark scenarios, run artifacts
+python3 researcher/scripts/skill_health.py --strict --no-history  # deterministic skill-body quality gate
 python3 researcher/scripts/run_benchmarks.py               # adversarial benchmark harness + repo + activation gates
 python3 researcher/scripts/check_activation_cases.py       # skill-boundary regression fixtures
 ```
@@ -89,11 +90,14 @@ When creating or editing skills:
 4. **Write in third person**: descriptions are injected into system prompts; inconsistent POV causes discovery issues
 5. **Platform-agnostic**: no vendor-locked examples or platform-specific tool names without abstraction
 6. **Token-conscious**: challenge each paragraph and assume an advanced audience
-7. **Include a Gotchas section**: experience-derived failure modes are the highest-signal content in any skill
-8. **Update root README.md** when adding new skills
-9. **Update marketplace/plugin manifests** when adding skills (`.claude-plugin/marketplace.json`, `.plugin/plugin.json`)
-10. **Update the corpus index** (`researcher/corpus/index.json`) to map the new skill to activation scenarios, mechanism IDs, and claim IDs
-11. **Run `validate_repo.py --strict`** before committing skill changes
+7. **Body standard**: include `When to Activate`, `Core Concepts`, `Practical Guidance`, `Examples`, `Guidelines`, `Gotchas`, `Integration`, and `References`
+8. **Explicit boundaries**: every `When to Activate` section needs positive triggers plus a `Do not activate` block routing adjacent work to the right skill
+9. **Include a Gotchas section**: experience-derived failure modes are the highest-signal content in any skill
+10. **Update root README.md** when adding new skills
+11. **Update marketplace/plugin manifests** when adding skills (`.claude-plugin/marketplace.json`, `.plugin/plugin.json`)
+12. **Update the corpus index** (`researcher/corpus/index.json`) to map the new skill to activation scenarios, mechanism IDs, and claim IDs
+13. **Update mechanisms and claims**: add registry entries for reusable behavior changes and `claim-*` provenance for numeric, benchmark, volatile, or vendor-performance claims
+14. **Run `validate_repo.py --strict`, `skill_health.py --strict --no-history`, `check_activation_cases.py`, and `run_benchmarks.py`** before committing skill changes
 
 ## Researcher OS Rules
 

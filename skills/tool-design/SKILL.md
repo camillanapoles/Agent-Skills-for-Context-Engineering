@@ -51,7 +51,7 @@ Namespace tools under common prefixes as the collection grows, because agents be
 Build single comprehensive tools instead of multiple narrow tools that overlap. Rather than implementing `list_users`, `list_events`, and `create_event` separately, implement `schedule_event` that finds availability and schedules in one call. The comprehensive tool handles the full workflow internally, removing the agent's burden of chaining calls in the correct order.
 
 **Why Consolidation Works**
-Apply consolidation because agents have limited context and attention. Each tool in the collection competes for attention during tool selection, each description consumes context budget tokens, and overlapping functionality creates ambiguity. Consolidation eliminates redundant descriptions, removes selection ambiguity, and shrinks the effective tool set. Vercel demonstrated this principle by reducing their agent from 17 specialized tools to 2 general-purpose tools and achieving better performance -- fewer tools meant less confusion and more reliable tool selection.
+Apply consolidation because agents have limited context and attention. Each tool in the collection competes for attention during tool selection, each description consumes context budget tokens, and overlapping functionality creates ambiguity. Consolidation eliminates redundant descriptions, removes selection ambiguity, and shrinks the effective tool set. Vercel's d0 case study is a concrete example of reducing specialized tools into a smaller primitive tool set with better measured outcomes (claim-tool-design-vercel-d0-reduction).
 
 **When Not to Consolidate**
 Keep tools separate when they have fundamentally different behaviors, serve different contexts, or must be callable independently. Over-consolidation creates a different problem: a single tool with too many parameters and modes becomes hard for agents to parameterize correctly.
@@ -98,7 +98,7 @@ Establish a consistent schema across all tools. Use verb-noun pattern for tool n
 
 ### Tool Collection Design
 
-Limit tool collections to 10-20 tools for most applications, because research shows description overlap causes model confusion and more tools do not always lead to better outcomes. When more tools are genuinely needed, use namespacing to create logical groupings. Implement selection mechanisms: tool grouping by domain, example-based selection hints, and umbrella tools that route to specialized sub-tools.
+Limit tool collections to the smallest set with non-overlapping purposes, because description overlap causes model confusion and more tools do not always lead to better outcomes. When more tools are genuinely needed, use namespacing to create logical groupings. Implement selection mechanisms: tool grouping by domain, example-based selection hints, and umbrella tools that route to specialized sub-tools.
 
 ### MCP Tool Naming Requirements
 
@@ -119,7 +119,7 @@ Without the server prefix, agents may fail to locate tools when multiple MCP ser
 
 ### Using Agents to Optimize Tools
 
-Feed observed tool failures back to an agent to diagnose issues and improve descriptions. Production testing shows this approach achieves 40% reduction in task completion time by helping future agents avoid mistakes.
+Feed observed tool failures back to an agent to diagnose issues and improve descriptions. Treat reported efficiency gains as workload-specific until reproduced on the target tool catalog.
 
 **The Tool-Testing Agent Pattern**:
 
@@ -169,6 +169,19 @@ When designing tool collections:
 3. Ensure each tool has a clear, unambiguous purpose
 4. Document error cases and recovery paths
 5. Test with actual agent interactions
+
+### Tool Audit Checklist
+
+Use this checklist for every tool before adding it to an agent:
+
+1. **Name**: verb-noun, namespaced if the catalog has multiple domains.
+2. **Description**: states what the tool does, when to use it, and what it returns.
+3. **Schema**: every parameter has type, constraints, defaults, and example values.
+4. **Return shape**: success and error payloads are documented and machine-readable.
+5. **Recovery**: each error tells the agent what to change before retrying.
+6. **Overlap**: no other tool has the same activation scenario.
+7. **Consolidation decision**: adjacent narrow tools are merged unless independent calls are required.
+8. **Token impact**: large responses support concise mode or file-reference mode.
 
 ## Examples
 
@@ -280,4 +293,4 @@ External resources:
 **Created**: 2025-12-20
 **Last Updated**: 2026-05-15
 **Author**: Agent Skills for Context Engineering Contributors
-**Version**: 2.1.0
+**Version**: 2.2.0

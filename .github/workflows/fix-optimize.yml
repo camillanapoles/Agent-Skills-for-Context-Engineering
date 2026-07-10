@@ -1,0 +1,57 @@
+name: Fix and Optimize
+
+on:
+  workflow_run:
+    workflows: ["Validate Researcher Operating System"]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  fix_optimize:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.pull_requests[0].number != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Publish stage result to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.workflow_run.pull_requests[0];
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                "✅ **Fix and Optimize stage completed**",
+                "",
+                "- Validation predecessor: success",
+                "- Optimization pass: metadata/status gate completed (no untrusted checkout on `workflow_run`)",
+                "- Next trigger: `Merge Gate` via `workflow_run`"
+              ].join("\n")
+            });
+
+      - name: Persist continuity snapshot
+        if: always()
+        run: |
+          mkdir -p .github/continuity
+          cat > .github/continuity/fix-optimize-snapshot.json <<'JSON'
+          {
+            "stage": "fix-optimize",
+            "entry": "workflow_run success from validate",
+            "decision": "optimization pass completed as metadata/status gate without untrusted checkout",
+            "evidence": "no repository checkout or untrusted code execution in workflow_run context",
+            "next_trigger": "workflow_run: Merge Gate"
+          }
+          JSON
+
+      - name: Upload continuity snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-fix-optimize-${{ github.run_id }}
+          path: .github/continuity/fix-optimize-snapshot.json

@@ -1,0 +1,90 @@
+name: Merge Gate
+
+on:
+  workflow_run:
+    workflows: ["Fix and Optimize"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  gate_and_merge:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.pull_requests[0].number != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate gate criteria
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.workflow_run.pull_requests[0].number;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const body = pr.body || "";
+            const checklistCheckedCount = (body.match(/- \[x\]/gi) || []).length;
+            const minimumChecklist = checklistCheckedCount >= 6;
+
+            const blockedLabels = new Set(["security-block", "do-not-merge"]);
+            const labels = (pr.labels || []).map((l) => l.name);
+            const hasSecurityBlock = labels.some((label) => blockedLabels.has(label));
+
+            const failures = [];
+            if (!minimumChecklist) failures.push(`minimum checklist not met (${checklistCheckedCount}/6 checked)`);
+            if (hasSecurityBlock) failures.push("security-block label present");
+            if (pr.state !== "open") failures.push(`PR is not open (${pr.state})`);
+            if (pr.draft) failures.push("PR is draft");
+
+            core.setOutput("pr_number", String(prNumber));
+            core.setOutput("checklist_count", String(checklistCheckedCount));
+            core.setOutput("security_blocked", String(hasSecurityBlock));
+
+            if (failures.length > 0) {
+              core.setOutput("can_merge", "false");
+              core.setFailed(`Merge gate failed: ${failures.join("; ")}`);
+            } else {
+              core.setOutput("can_merge", "true");
+            }
+
+      - name: Merge PR
+        if: steps.gate.outputs.can_merge == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number("${{ steps.gate.outputs.pr_number }}");
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              merge_method: "squash"
+            });
+
+      - name: Persist continuity snapshot
+        if: always()
+        run: |
+          mkdir -p .github/continuity
+          cat > .github/continuity/merge-gate-snapshot.json <<JSON
+          {
+            "stage": "merge-gate",
+            "entry": "workflow_run success from fix-optimize",
+            "decision": "gate evaluation completed",
+            "evidence": "checklist_checked=${{ steps.gate.outputs.checklist_count }}, security_blocked=${{ steps.gate.outputs.security_blocked }}",
+            "next_trigger": "workflow_run: Next Sequence (on success)"
+          }
+          JSON
+
+      - name: Upload continuity snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-merge-gate-${{ github.run_id }}
+          path: .github/continuity/merge-gate-snapshot.json

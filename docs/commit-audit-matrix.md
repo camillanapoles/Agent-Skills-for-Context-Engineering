@@ -63,7 +63,7 @@ The `multi-agent-patterns` skill (`skills/multi-agent-patterns/SKILL.md`) introd
 - Agent sprawl (Gotcha #4)
 - Over-decomposition — "Decompose only when subtasks genuinely benefit from separate contexts" (Gotcha #7)
 
-**Verdict on G4:** The Gotchas section is strong. The issue is framing: the Examples section comes *after* the Gotchas and shows a 4-agent architecture without any cost/overhead annotation. A reader scanning Examples before Gotchas gets the promotion without the caution.
+**Verdict on G4:** The Gotchas section is strong. The issue is framing: the Examples section comes *before* the Gotchas and shows a 4-agent architecture without any cost/overhead annotation. A reader scanning Examples before Gotchas gets the promotion without the caution.
 
 **Decision: REFACTOR (low priority)**
 

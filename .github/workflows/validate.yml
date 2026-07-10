@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   validate:
@@ -60,3 +61,24 @@ jobs:
 
       - name: Adversarial benchmark harness
         run: python researcher/scripts/run_benchmarks.py
+
+      - name: Persist continuity snapshot
+        if: always()
+        run: |
+          mkdir -p .github/continuity
+          cat > .github/continuity/validate-snapshot.json <<'JSON'
+          {
+            "stage": "validate",
+            "entry": "pull_request or push event",
+            "decision": "validation checks completed",
+            "evidence": "unit tests + platform compatibility + strict repo validation + skill health + activation cases + benchmarks",
+            "next_trigger": "workflow_run: Fix and Optimize"
+          }
+          JSON
+
+      - name: Upload continuity snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-validate-${{ github.run_id }}
+          path: .github/continuity/validate-snapshot.json

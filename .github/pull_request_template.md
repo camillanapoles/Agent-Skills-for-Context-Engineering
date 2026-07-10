@@ -1,8 +1,3 @@
----
-name: about
-about: Default pull request template for cnmfs-dev/* branches
----
-
 ## Summary
 
 <!-- One sentence: what does this PR change and why? -->

@@ -194,7 +194,7 @@ Orchestrator (planning, synthesis, user comms)
 └── Specialist (domain-specific retrieval + analysis tools only)
 ```
 
-*Why two agents:* specialist needs a different tool set; their context would bloat the orchestrator. Estimated overhead: ~3–4× token cost versus single-agent. Justified when isolation saves more tokens than coordination costs.
+*Why two agents:* specialist needs a different tool set; their context would bloat the orchestrator. Estimated overhead: ~3–4× token cost versus a single-agent baseline without tool isolation. Justified when isolation saves more tokens than coordination costs.
 
 **Example 2: Handoff Protocol**
 ```python

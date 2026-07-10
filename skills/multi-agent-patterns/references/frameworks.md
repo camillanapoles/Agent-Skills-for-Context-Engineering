@@ -2,6 +2,33 @@
 
 This document provides implementation details for multi-agent architectures across different frameworks.
 
+## When Multi-Agent Is Worth the Overhead
+
+Before reaching for any multi-agent pattern, verify that at least one of the following is true:
+
+1. **Context isolation**: the subtask's tool set or retrieved content would pollute the orchestrator's context window if kept there.
+2. **Genuine parallelism**: ≥2 subtasks can run in parallel with independent inputs/outputs.
+3. **Specialization payoff**: the subtask is significantly better served by a different system prompt than the orchestrator's.
+
+If none of the above apply, a single agent is almost always cheaper and simpler.
+
+**4-Agent Research Team (when it's justified)**
+
+```text
+Supervisor
+├── Researcher (web search, document retrieval)   ← isolated tool set; runs in parallel
+├── Analyzer   (data analysis, statistics)        ← isolated tool set; runs in parallel
+├── Fact-checker (verification, validation)       ← runs after Researcher/Analyzer; independent
+└── Writer     (report generation, formatting)   ← final synthesis; separate context budget
+```
+
+*Pre-conditions for this pattern to be net-positive:*
+- The research, analysis, and fact-checking phases produce enough output to justify separate contexts (>2000 tokens each).
+- Researcher and Analyzer can be launched in parallel, not sequentially.
+- Total token cost is budgeted at ~15× single-agent baseline (see `multi-agent-patterns` Gotcha #2).
+
+*If the phases are sequential and small, prefer:* a single agent with observation masking and compressed tool outputs.
+
 ## Supervisor Pattern
 
 ### LangGraph Supervisor Implementation
